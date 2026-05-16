@@ -1,8 +1,7 @@
 #ifndef CPP_H
 #define CPP_H
 
-/**
- * cpp.h - Organized C Preprocessor Utility Macros
+/* cpp.h - Organized C Preprocessor Utility Macros
  * 
  * This header provides a collection of preprocessor macros for functional
  * programming patterns, string manipulation, and other utility operations.
@@ -20,18 +19,15 @@
  * Basic Function Composition Macros
  ******************************************************************************/
 
-/**
- * Identity function - returns its argument unchanged
+/* Identity function - returns its argument unchanged
  */
 #define IDENTITY(x) x
 
-/**
- * Apply function f to arguments
+/* Apply function f to arguments
  */
 #define APPLY(x, ...) x(__VA_ARGS__)
 
-/**
- * Function composition macros - chain function calls
+/* Function composition macros - chain function calls
  */
 #define COMPOSE(f, g, ...) f(g(__VA_ARGS__))
 #define COMPOSE3(f, g, h, ...) f(g(h(__VA_ARGS__)))
@@ -41,8 +37,7 @@
  * Tuple/Argument Manipulation Macros
  ******************************************************************************/
 
-/**
- * Extract elements from argument lists
+/* Extract elements from argument lists
  * 
  * Note: These are fundamental macros that other utility macros build upon.
  * To add additional extractors, follow the pattern shown below.
@@ -52,8 +47,7 @@
 #define SND(_, x, ...) x
 #define THD(_, __, x, ...) x
 
-/**
- * Enumeration 2 tuple
+/* Enumeration 2 tuple
  *
  * Note: Only works with 8 bit (<= 256) enums
  */
@@ -62,8 +56,7 @@
   | ( ((int)(y) & 0x00FF) << 0 ) \
   )
 
-/**
- * Enumeration 3 tuple
+/* Enumeration 3 tuple
  *
  * Note: Only works with 5 bit (<= 32) enums
  */
@@ -73,8 +66,7 @@
   | ( ((int)(z) & 0x001F) <<  0 ) \
   )
 
-/**
- * Enumeration 4 tuple
+/* Enumeration 4 tuple
  *
  * Note: Only works with 6 bit (<= 16) enums
  */
@@ -95,8 +87,7 @@
 #define THD4_SET(x, y) ((((int)(x) & 0x000F) <<  8) | ((int)(y) & ~0x0F00))
 #define FTH4_SET(x, y) ((((int)(x) & 0x000F) << 12) | ((int)(y) & ~0xF000))
 
-/**
- * Alias macros for readability
+/* Alias macros for readability
  * 
  * Note: These macros need corresponding implementation helpers prefixed with underscore.
  * To extend, define both the alias and its helper with matching names.
@@ -104,8 +95,7 @@
 #define FIRST(f) _FIRST_ ## f
 #define SECOND(f) _SECOND_ ## f
 
-/**
- * Drop elements from argument lists
+/* Drop elements from argument lists
  * 
  * Note: To add a new DROP macro for N elements, define:
  * #define DROP_N(...) a pattern with N underscores followed by __VA_ARGS__
@@ -113,13 +103,11 @@
 #define DROP(x) _DROP_ ## x
 #define _DROP_2(_, __, ...) __VA_ARGS__
 
-/**
- * Reorder arguments
+/* Reorder arguments
  */
 #define FLIP(x, y, ...) y, x, __VA_ARGS__
 
-/**
- * Empty argument list
+/* Empty argument list
  */
 #define EMPTY(...)
 
@@ -129,14 +117,12 @@
 
 #define STRINGIFY(x) #x
 
-/**
- * Concatenation macros
+/* Concatenation macros
  */
 #define CAT(x, y, ...) x y
 #define CAT3(x, y, z, ...) x y z
 
-/**
- * Prefix manipulation
+/* Prefix manipulation
  * 
  * Note: To add support for new prefixes, define a new PREFIX_X macro
  * where X is the name you want to support.
@@ -145,8 +131,7 @@
 #define _PREFIX_Log(x) _DEFER_STRING_CAT(Log, x)
 #define _DEFER_STRING_CAT(x, y) x ## y
 
-/**
- * String copy with bounds checking
+/* String copy with bounds checking
  * 
  * Note: To add support for new source/length combinations, define a new
  * _STRNCPY_source_length helper macro for each specific case.
@@ -158,8 +143,7 @@
  * Operators and Expression Helpers
  ******************************************************************************/
 
-/**
- * Infix operator macros
+/* Infix operator macros
  */
 #define INTER(x) x ## _INTER
 #define else_INTER(x, y, ...) x else y
@@ -169,14 +153,12 @@
 #define PLUS_INTER(x, y, ...) x + y
 #define EQUAL_INTER(x, y, ...) x = y
 
-/**
- * Expression terminators
+/* Expression terminators
  */
 #define END_EXPRESSION(x, ...) x;
 #define END_EXPRESSION_INTER(x, y, ...) END_EXPRESSION(x) y
 
-/**
- * Switch case return macros
+/* Switch case return macros
  * 
  * Note: These macros simplify common switch-case pattern implementations.
  * CASE_RETURN_STRINGIFIED converts an enum value to its string representation.
@@ -185,8 +167,7 @@
 #define CASE_RETURN_STRINGIFIED(x) case x: return STRINGIFY(x)
 #define CASE_RETURN(x, y, ...) case x: return y
 
-/**
- * Maximum value macro
+/* Maximum value macro
  */
 #ifdef CPP_DEV
 #define MAX(x, y) max(x, y)
@@ -194,8 +175,7 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-/**
- * Minimum value macro
+/* Minimum value macro
  */
 #ifdef CPP_DEV
 #define MIN(x, y) min(x, y)
@@ -207,8 +187,7 @@
  * Control Flow Helper Macros
  ******************************************************************************/
 
-/**
- * Switch case fallthrough annotation
+/* Switch case fallthrough annotation
  * 
  * Note: This macro explicitly indicates intentional fallthrough in switch 
  * statements to silence compiler warnings. It provides cross-compiler 
@@ -240,8 +219,7 @@
  * Column and Table Selection
  ******************************************************************************/
 
-/**
- * Select specific columns from tables
+/* Select specific columns from tables
  * 
  * Note: To support new column selections, define a new helper macro:
  * #define _SELECT_COLUMNS_table_x_y(...) with the appropriate parameter
@@ -256,8 +234,7 @@
  * Argument Expansion Macros
  ******************************************************************************/
 
-/**
- * Expand arguments through other macros
+/* Expand arguments through other macros
  * 
  * Note: To add support for expanding through new macros, define a new
  * _EXPAND_ARG_MACRO_NAME helper that applies the corresponding macro.
@@ -277,8 +254,7 @@
  * Pointer Type Helpers
  ******************************************************************************/
 
-/**
- * Pointer type shortcuts
+/* Pointer type shortcuts
  */
 #define FP(x) const x *const
 #define CP *const
@@ -287,8 +263,7 @@
  * Assignment Macros
  ******************************************************************************/
 
-/**
- * Value assignment macros
+/* Value assignment macros
  * 
  * Note: To add new assignment types, define a new _ASSIGN_VALUE helper
  * where VALUE is the specific value or type to assign.
@@ -299,8 +274,7 @@
 #define _ASSIGN_INT_MIN(x, ...) x = INT_MIN
 #define _ASSIGN_EMPTY(...)
 
-/**
- * Negated value assignment macros
+/* Negated value assignment macros
  * 
  * Note: To add new negated assignments, define a new _ASSIGN_NEG_VALUE helper
  * where VALUE is the specific value to negate and assign.
@@ -308,8 +282,7 @@
 #define ASSIGN_NEG(x, ...) _ASSIGN_NEG_ ## x
 #define _ASSIGN_NEG_1(x, ...) x = -1
 
-/**
- * Pointer dereferencing assignment
+/* Pointer dereferencing assignment
  * 
  * Note: To add new dereferencing assignments, define a new _ASSIGN_DEREF_VALUE helper
  * where VALUE is the specific value to assign through the pointer.
@@ -321,8 +294,7 @@
  * Structure Field Access
  ******************************************************************************/
 
-/**
- * Structure field access helpers
+/* Structure field access helpers
  * 
  * Note: To add support for dereferencing from new structures, define a new
  * _DREF_FROM_structvar helper where structvar is the structure variable name.
@@ -339,8 +311,7 @@
  * Equivalence Testing
  ******************************************************************************/
 
-/**
- * Value comparison macros
+/* Value comparison macros
  * 
  * Note: To add support for comparing with new values, define a new
  * _EQUIVALENT_VALUE helper where VALUE is the specific value to compare against.
@@ -350,8 +321,7 @@
 #define _EQUIVALENT_INT_MIN(x, ...) INT_MIN == (x)
 #define _EQUIVALENT_EMPTY(...) NULL == NULL
 
-/**
- * Pointer dereferencing comparison
+/* Pointer dereferencing comparison
  * 
  * Note: To add support for comparing dereferenced pointers with new values,
  * define a new _EQUIVALENT_DEREF_VALUE helper where VALUE is the value to compare.
