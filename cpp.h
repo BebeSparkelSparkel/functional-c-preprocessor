@@ -145,8 +145,8 @@
 
 /* Concatenation macros
  */
-#define CAT(x, y, ...) x y
-#define CAT3(x, y, z, ...) x y z
+#define CAT(x, y) x y
+#define CAT3(x, y, z) x y z
 
 /* Prefix manipulation
  * 
@@ -174,7 +174,7 @@
 #define INTER(x) x ## _INTER
 #define else_INTER(x, y, ...) x else y
 
-#define COMMA_INTER(x, y) x, y
+#define COMMA_INTER(x, ...) x, __VA_ARGS__
 #define AND_INTER(x, y)   ((x) && (y))
 #define PLUS_INTER(x, y)  ((x) + (y))
 #define EQUAL_INTER(x, y) x = (y)
@@ -276,7 +276,7 @@
 #define _MR20( r, m, c, a, ...) r(m(c, a), _MR19(r, m, c, __VA_ARGS__))
 
 /*******************************************************************************
- * Column and Table Selection
+ * Table Selection
  ******************************************************************************/
 
 /* COLUMNS(table, col1, col2, ...)
@@ -314,6 +314,19 @@
 #define _COLUMN_2(x, ...) _COLUMN_1(__VA_ARGS__)
 #define _COLUMN_3(x, ...) _COLUMN_2(__VA_ARGS__)
 #define _COLUMN_4(x, ...) _COLUMN_3(__VA_ARGS__)
+
+/* TABLE_LOOKUP(table, key_col_name, key, result_col_name, default_val)
+ *
+ * Look up a value from a table macro by selecting the row whose
+ * key column equals key, returning the corresponding result
+ * column. Produces a nested ternary chain that the compiler
+ * constant-folds when key is a compile-time constant.
+ * Evaluates to default_val if no row has a key equal to key.
+ */
+#define TABLE_LOOKUP(table, key_col_name, key, result_col_name, default_val) \
+  table(CAT, _ROW_MATCH, key, COLUMNS(table, key_col_name, result_col_name)) (default_val)
+
+#define _ROW_MATCH(key, _, key_col, val_col, ...) ((key) == (_1_COLUMNS(key_col, __VA_ARGS__))) ? (_1_COLUMNS(val_col, __VA_ARGS__)) :
 
 /*******************************************************************************
  * Defintion Helpers
