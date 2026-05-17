@@ -1,5 +1,7 @@
 #ifndef CPP_H
 #define CPP_H
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
 
 /* cpp.h - Organized C Preprocessor Utility Macros
  * 
@@ -32,6 +34,27 @@
 #define COMPOSE(f, g, ...) f(g(__VA_ARGS__))
 #define COMPOSE3(f, g, h, ...) f(g(h(__VA_ARGS__)))
 #define COMPOSE4(f, g, h, i, ...) f(g(h(i(__VA_ARGS__))))
+
+/*******************************************************************************
+ * Argument Expansion Macros
+ ******************************************************************************/
+
+/* Expand arguments through other macros
+ * 
+ * Note: To add support for expanding through new macros, define a new
+ * _EXPAND_ARG_MACRO_NAME helper that applies the corresponding macro.
+ */
+#define EXPAND_ARG(x) _EXPAND_ARG_ ## x
+#define _EXPAND_ARG_APPLY(...) APPLY(__VA_ARGS__)
+#define _EXPAND_ARG_CAT(...) CAT(__VA_ARGS__)
+#define _EXPAND_ARG_CAT3(...) CAT3(__VA_ARGS__)
+#define _EXPAND_ARG_HEAD(...) HEAD(__VA_ARGS__)
+#define _EXPAND_ARG_SND(...) SND(__VA_ARGS__)
+#define _EXPAND_ARG_SECOND(...) SECOND(__VA_ARGS__)
+#define _EXPAND_ARG_TAIL(...) TAIL(__VA_ARGS__)
+#define _EXPAND_ARG_DROP(x) _EXPAND_ARG_DROP_ ## x
+#define _EXPAND_ARG_DROP_2(...) DROP(2)(__VA_ARGS__)
+#define _EXPAND_ARG_EQUAL_INTER(...) EQUAL_INTER(__VA_ARGS__)
 
 /*******************************************************************************
  * Tuple/Argument Manipulation Macros
@@ -117,6 +140,9 @@
 
 #define STRINGIFY(x) #x
 
+#define NAME_CAT(x, y) _NAME_CAT(x, y)
+#define _NAME_CAT(x, y) x ## y
+
 /* Concatenation macros
  */
 #define CAT(x, y, ...) x y
@@ -148,10 +174,11 @@
 #define INTER(x) x ## _INTER
 #define else_INTER(x, y, ...) x else y
 
-#define COMMA_INTER(x, y, ...) x, y
-#define AND_INTER(x, y, ...) (x) && (y)
-#define PLUS_INTER(x, y, ...) x + y
-#define EQUAL_INTER(x, y, ...) x = y
+#define COMMA_INTER(x, y) x, y
+#define AND_INTER(x, y)   ((x) && (y))
+#define PLUS_INTER(x, y)  ((x) + (y))
+#define EQUAL_INTER(x, y) x = (y)
+#define STAR_INTER(x, y)  ((x) * (y))
 
 /* Expression terminators
  */
@@ -216,39 +243,84 @@
 #endif
 
 /*******************************************************************************
+ * Argument Counting
+ ******************************************************************************/
+
+#define NARGS(...) _NARGS(__VA_ARGS__,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
+#define _NARGS(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,N,...) N
+
+/*******************************************************************************
+ * Folds
+ ******************************************************************************/
+
+#define MAP_REDUCE(reduce, map, constant, ...) APPLY(NAME_CAT(_MR, NARGS(__VA_ARGS__)), reduce, map, constant, __VA_ARGS__)
+#define _MR1(  r, m, c, a)      m(c, a)
+#define _MR2(  r, m, c, a, ...) r(m(c, a),  _MR1(r, m, c, __VA_ARGS__))
+#define _MR3(  r, m, c, a, ...) r(m(c, a),  _MR2(r, m, c, __VA_ARGS__))
+#define _MR4(  r, m, c, a, ...) r(m(c, a),  _MR3(r, m, c, __VA_ARGS__))
+#define _MR5(  r, m, c, a, ...) r(m(c, a),  _MR4(r, m, c, __VA_ARGS__))
+#define _MR6(  r, m, c, a, ...) r(m(c, a),  _MR5(r, m, c, __VA_ARGS__))
+#define _MR7(  r, m, c, a, ...) r(m(c, a),  _MR6(r, m, c, __VA_ARGS__))
+#define _MR8(  r, m, c, a, ...) r(m(c, a),  _MR7(r, m, c, __VA_ARGS__))
+#define _MR9(  r, m, c, a, ...) r(m(c, a),  _MR8(r, m, c, __VA_ARGS__))
+#define _MR10( r, m, c, a, ...) r(m(c, a),  _MR9(r, m, c, __VA_ARGS__))
+#define _MR11( r, m, c, a, ...) r(m(c, a), _MR10(r, m, c, __VA_ARGS__))
+#define _MR12( r, m, c, a, ...) r(m(c, a), _MR11(r, m, c, __VA_ARGS__))
+#define _MR13( r, m, c, a, ...) r(m(c, a), _MR12(r, m, c, __VA_ARGS__))
+#define _MR14( r, m, c, a, ...) r(m(c, a), _MR13(r, m, c, __VA_ARGS__))
+#define _MR15( r, m, c, a, ...) r(m(c, a), _MR14(r, m, c, __VA_ARGS__))
+#define _MR16( r, m, c, a, ...) r(m(c, a), _MR15(r, m, c, __VA_ARGS__))
+#define _MR17( r, m, c, a, ...) r(m(c, a), _MR16(r, m, c, __VA_ARGS__))
+#define _MR18( r, m, c, a, ...) r(m(c, a), _MR17(r, m, c, __VA_ARGS__))
+#define _MR19( r, m, c, a, ...) r(m(c, a), _MR18(r, m, c, __VA_ARGS__))
+#define _MR20( r, m, c, a, ...) r(m(c, a), _MR19(r, m, c, __VA_ARGS__))
+
+/*******************************************************************************
  * Column and Table Selection
  ******************************************************************************/
 
-/* Select specific columns from tables
- * 
- * Note: To support new column selections, define a new helper macro:
- * #define _SELECT_COLUMNS_table_x_y(...) with the appropriate parameter
- * pattern and extraction logic.
+/* COLUMNS(table, col1, col2, ...)
+ *
+ * Extract columns by name from a table macro, in any order.
+ *
+ * Table definition format:
+ *   #define <table-name>(cons, map, ...) \
+ *     / *                  | <col1>  | <col2>  | <col3>  |* /\
+ *     cons(map(__VA_ARGS__ , r1c1    , r1c2    , r1c3    ),  \
+ *     cons(map(__VA_ARGS__ , r2c1    , r2c2    , r2c3    ),  \
+ *          map(__VA_ARGS__ , r3c1    , r3c2    , r3c3    )   \
+ *         ))
+ *
+ * Column index definitions:
+ *   #define COLUMN_<table-name>_<column-name>  <column-index>
+ *
+ * Single column:
+ *   <table-name>(CONS, APPLY, COLUMNS(<table-name>, <col1>))
+ *
+ * Multiple columns (requires COMPOSE and EXPAND_ARG to unpack):
+ *   <table-name>(CONS, COMPOSE, EXPAND_ARG(COMBINER), APPLY, COLUMNS(<table-name>, <col2>, <col1>))
  */
-#define SELECT_COLUMNS(table, x, y) _SELECT_COLUMNS_ ## table ## _ ## x ## _ ## y
-#define _SELECT_COLUMNS_1_3(x, _, y, ...) x, y
-#define _SELECT_COLUMNS_4_1(x, _, __, y, ...) y, x
-#define _SELECT_COLUMNS_5_1(x, _, __, ___, y, ...) y, x
+#define COLUMNS(table, ...) _N_COLUMNS(NARGS(__VA_ARGS__)), MAP_REDUCE(COMMA_INTER, NAME_CAT, COLUMN_ ## table ## _, __VA_ARGS__)
+#define _N_COLUMNS(n) _N_COLUMNS_(n)
+#define _N_COLUMNS_(n) _ ## n ## _ ## COLUMNS
+
+#define _N_COLUMNS_APPLY(x, ...) x(__VA_ARGS__)
+#define _1_COLUMNS(a, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__)
+#define _2_COLUMNS(a, b, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__), _N_COLUMNS_APPLY(_COLUMN_ ## b, __VA_ARGS__)
+#define _3_COLUMNS(a, b, c, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__), _2_COLUMNS(b, c, __VA_ARGS__)
+#define _4_COLUMNS(a, b, c, d, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__), _3_COLUMNS(b, c, d, __VA_ARGS__)
+
+#define _COLUMN_1(...) HEAD(__VA_ARGS__,)
+#define _COLUMN_2(x, ...) _COLUMN_1(__VA_ARGS__)
+#define _COLUMN_3(x, ...) _COLUMN_2(__VA_ARGS__)
+#define _COLUMN_4(x, ...) _COLUMN_3(__VA_ARGS__)
 
 /*******************************************************************************
- * Argument Expansion Macros
+ * Defintion Helpers
  ******************************************************************************/
 
-/* Expand arguments through other macros
- * 
- * Note: To add support for expanding through new macros, define a new
- * _EXPAND_ARG_MACRO_NAME helper that applies the corresponding macro.
- */
-#define EXPAND_ARG(x, ...) _EXPAND_ARG_ ## x
-#define _EXPAND_ARG_APPLY(...) APPLY(__VA_ARGS__)
-#define _EXPAND_ARG_CAT(...) CAT(__VA_ARGS__)
-#define _EXPAND_ARG_CAT3(...) CAT3(__VA_ARGS__)
-#define _EXPAND_ARG_HEAD(...) HEAD(__VA_ARGS__)
-#define _EXPAND_ARG_SND(...) SND(__VA_ARGS__)
-#define _EXPAND_ARG_SECOND(...) SECOND(__VA_ARGS__)
-#define _EXPAND_ARG_TAIL(...) TAIL(__VA_ARGS__)
-#define _EXPAND_ARG_DROP(x) _EXPAND_ARG_DROP_ ## x
-#define _EXPAND_ARG_DROP_2(...) DROP(2)(__VA_ARGS__)
+#define ENUMERATORS(name_column, value_column, table) \
+  table(COMMA_INTER, COMPOSE, EXPAND_ARG(EQUAL_INTER), APPLY, COLUMNS(table, name_column, value_column))
 
 /*******************************************************************************
  * Pointer Type Helpers
@@ -329,6 +401,58 @@
 #define EQUIVALENT_DEREF(x) _EQUIVALENT_DEREF_ ## x
 #define _EQUIVALENT_DEREF_0(x, ...) 0 == *(x)
 
+/*******************************************************************************
+ * Repeating a Macro Function
+ ******************************************************************************/
+#define REPEAT_N(n, cons, map, ...) APPLY(_REPEAT_ ## n, n, cons, map, __VA_ARGS__)
+#define _REPEAT_1(  n, cons, map, ...)      map(__VA_ARGS__,  1, n)
+#define _REPEAT_2(  n, cons, map, ...) cons(_REPEAT_1(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  2, n))
+#define _REPEAT_3(  n, cons, map, ...) cons(_REPEAT_2(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  3, n))
+#define _REPEAT_4(  n, cons, map, ...) cons(_REPEAT_3(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  4, n))
+#define _REPEAT_5(  n, cons, map, ...) cons(_REPEAT_4(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  5, n))
+#define _REPEAT_6(  n, cons, map, ...) cons(_REPEAT_5(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  6, n))
+#define _REPEAT_7(  n, cons, map, ...) cons(_REPEAT_6(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  7, n))
+#define _REPEAT_8(  n, cons, map, ...) cons(_REPEAT_7(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  8, n))
+#define _REPEAT_9(  n, cons, map, ...) cons(_REPEAT_8(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  9, n))
+#define _REPEAT_10( n, cons, map, ...) cons(_REPEAT_9(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 10, n))
+#define _REPEAT_11( n, cons, map, ...) cons(_REPEAT_10( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 11, n))
+#define _REPEAT_12( n, cons, map, ...) cons(_REPEAT_11( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 12, n))
+#define _REPEAT_13( n, cons, map, ...) cons(_REPEAT_12( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 13, n))
+#define _REPEAT_14( n, cons, map, ...) cons(_REPEAT_13( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 14, n))
+#define _REPEAT_15( n, cons, map, ...) cons(_REPEAT_14( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 15, n))
+#define _REPEAT_16( n, cons, map, ...) cons(_REPEAT_15( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 16, n))
+#define _REPEAT_17( n, cons, map, ...) cons(_REPEAT_16( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 17, n))
+#define _REPEAT_18( n, cons, map, ...) cons(_REPEAT_17( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 18, n))
+#define _REPEAT_19( n, cons, map, ...) cons(_REPEAT_18( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 19, n))
+/* ... */
 
+/* The C preprocessor will not recursively expand a macro that is currently
+ * being expanded (§6.10.3.4). REPEAT_ALT is a duplicate of REPEAT_N with
+ * a distinct name, allowing it to be used inside map functions passed to
+ * REPEAT_N without being suppressed by the self-referential expansion guard.
+ */
+#define REPEAT_ALT_N(n, cons, map, ...) _APPLY_ALT(_REPEAT_ALT_ ## n, n, cons, map, __VA_ARGS__)
+#define _APPLY_ALT(x, ...) x(__VA_ARGS__)
+#define _REPEAT_ALT_1(  n, cons, map, ...)      map(__VA_ARGS__,  1, n)
+#define _REPEAT_ALT_2(  n, cons, map, ...) cons(_REPEAT_ALT_1(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  2, n))
+#define _REPEAT_ALT_3(  n, cons, map, ...) cons(_REPEAT_ALT_2(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  3, n))
+#define _REPEAT_ALT_4(  n, cons, map, ...) cons(_REPEAT_ALT_3(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  4, n))
+#define _REPEAT_ALT_5(  n, cons, map, ...) cons(_REPEAT_ALT_4(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  5, n))
+#define _REPEAT_ALT_6(  n, cons, map, ...) cons(_REPEAT_ALT_5(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  6, n))
+#define _REPEAT_ALT_7(  n, cons, map, ...) cons(_REPEAT_ALT_6(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  7, n))
+#define _REPEAT_ALT_8(  n, cons, map, ...) cons(_REPEAT_ALT_7(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  8, n))
+#define _REPEAT_ALT_9(  n, cons, map, ...) cons(_REPEAT_ALT_8(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__,  9, n))
+#define _REPEAT_ALT_10( n, cons, map, ...) cons(_REPEAT_ALT_9(  n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 10, n))
+#define _REPEAT_ALT_11( n, cons, map, ...) cons(_REPEAT_ALT_10( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 11, n))
+#define _REPEAT_ALT_12( n, cons, map, ...) cons(_REPEAT_ALT_11( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 12, n))
+#define _REPEAT_ALT_13( n, cons, map, ...) cons(_REPEAT_ALT_12( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 13, n))
+#define _REPEAT_ALT_14( n, cons, map, ...) cons(_REPEAT_ALT_13( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 14, n))
+#define _REPEAT_ALT_15( n, cons, map, ...) cons(_REPEAT_ALT_14( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 15, n))
+#define _REPEAT_ALT_16( n, cons, map, ...) cons(_REPEAT_ALT_15( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 16, n))
+#define _REPEAT_ALT_17( n, cons, map, ...) cons(_REPEAT_ALT_16( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 17, n))
+#define _REPEAT_ALT_18( n, cons, map, ...) cons(_REPEAT_ALT_17( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 18, n))
+#define _REPEAT_ALT_19( n, cons, map, ...) cons(_REPEAT_ALT_18( n, cons, map, __VA_ARGS__), map(__VA_ARGS__, 19, n))
+/* ... */
 
+#pragma clang diagnostic pop
 #endif /* CPP_H */
