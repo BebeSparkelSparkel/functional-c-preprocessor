@@ -28,6 +28,12 @@
 /* Apply function f to arguments
  */
 #define APPLY(x, ...) x(__VA_ARGS__)
+#define _APPLY(x, ...) x(__VA_ARGS__)
+
+#define APPLY_ALT(x, ...) x(__VA_ARGS__)
+#define _APPLY_ALT(x, ...) x(__VA_ARGS__)
+
+#define BIMAP(f, g, x, y) f(x), g(y)
 
 /* Function composition macros - chain function calls
  */
@@ -36,25 +42,16 @@
 #define COMPOSE4(f, g, h, i, ...) f(g(h(i(__VA_ARGS__))))
 
 /*******************************************************************************
- * Argument Expansion Macros
+ * Closure Macros
  ******************************************************************************/
 
-/* Expand arguments through other macros
- * 
- * Note: To add support for expanding through new macros, define a new
- * _EXPAND_ARG_MACRO_NAME helper that applies the corresponding macro.
- */
-#define EXPAND_ARG(x) _EXPAND_ARG_ ## x
-#define _EXPAND_ARG_APPLY(...) APPLY(__VA_ARGS__)
-#define _EXPAND_ARG_CAT(...) CAT(__VA_ARGS__)
-#define _EXPAND_ARG_CAT3(...) CAT3(__VA_ARGS__)
-#define _EXPAND_ARG_HEAD(...) HEAD(__VA_ARGS__)
-#define _EXPAND_ARG_SND(...) SND(__VA_ARGS__)
-#define _EXPAND_ARG_SECOND(...) SECOND(__VA_ARGS__)
-#define _EXPAND_ARG_TAIL(...) TAIL(__VA_ARGS__)
-#define _EXPAND_ARG_DROP(x) _EXPAND_ARG_DROP_ ## x
-#define _EXPAND_ARG_DROP_2(...) DROP(2)(__VA_ARGS__)
-#define _EXPAND_ARG_EQUAL_INTER(...) EQUAL_INTER(__VA_ARGS__)
+#define UNPACK(...) __VA_ARGS__
+
+#define CLOSE(f, ...) (f, __VA_ARGS__)
+
+#define APPLY_CLOSURE(closure, ...) APPLY(_APPLY, UNPACK closure, __VA_ARGS__)
+
+#define COMPOSE_LC(closure, f, ...) APPLY_CLOSURE(closure, f(__VA_ARGS__))
 
 /*******************************************************************************
  * Tuple/Argument Manipulation Macros
@@ -179,6 +176,7 @@
 #define PLUS_INTER(x, y)  ((x) + (y))
 #define EQUAL_INTER(x, y) x = (y)
 #define STAR_INTER(x, y)  ((x) * (y))
+#define SEMI_INTER(x, y) x; y
 
 /* Expression terminators
  */
@@ -191,8 +189,10 @@
  * CASE_RETURN_STRINGIFIED converts an enum value to its string representation.
  * CASE_RETURN provides a shorthand for returning a specific value for a case.
  */
-#define CASE_RETURN_STRINGIFIED(x) case x: return STRINGIFY(x)
-#define CASE_RETURN(x, y, ...) case x: return y
+#define RETURN(x) return (x)
+#define CASE_RETURN_STRINGIFIED(x) case (x): return STRINGIFY(x)
+#define CASE(x, y) case (x): y
+#define CASE_RETURN(x, y, ...) case (x): return (y)
 
 /* Maximum value macro
  */
@@ -295,20 +295,21 @@
  *   #define COLUMN_<table-name>_<column-name>  <column-index>
  *
  * Single column:
- *   <table-name>(CONS, APPLY, COLUMNS(<table-name>, <col1>))
+ *   <table-name>(CONS, COLUMNS(<table-name>, <col1>))
  *
  * Multiple columns (requires COMPOSE and EXPAND_ARG to unpack):
- *   <table-name>(CONS, COMPOSE, EXPAND_ARG(COMBINER), APPLY, COLUMNS(<table-name>, <col2>, <col1>))
+ *   <table-name>(CONS, COMPOSE, EXPAND_ARG(COMBINER), COLUMNS(<table-name>, <col2>, <col1>))
  */
-#define COLUMNS(table, ...) _N_COLUMNS(NARGS(__VA_ARGS__)), MAP_REDUCE(COMMA_INTER, NAME_CAT, COLUMN_ ## table ## _, __VA_ARGS__)
+#define COLUMNS(...) APPLY, _COLUMNS(__VA_ARGS__)
+#define _COLUMNS(table, ...) _N_COLUMNS(NARGS(__VA_ARGS__)), MAP_REDUCE(COMMA_INTER, NAME_CAT, COLUMN_ ## table ## _, __VA_ARGS__)
+
 #define _N_COLUMNS(n) _N_COLUMNS_(n)
 #define _N_COLUMNS_(n) _ ## n ## _ ## COLUMNS
 
-#define _N_COLUMNS_APPLY(x, ...) x(__VA_ARGS__)
-#define _1_COLUMNS(a, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__)
-#define _2_COLUMNS(a, b, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__), _N_COLUMNS_APPLY(_COLUMN_ ## b, __VA_ARGS__)
-#define _3_COLUMNS(a, b, c, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__), _2_COLUMNS(b, c, __VA_ARGS__)
-#define _4_COLUMNS(a, b, c, d, ...) _N_COLUMNS_APPLY(_COLUMN_ ## a, __VA_ARGS__), _3_COLUMNS(b, c, d, __VA_ARGS__)
+#define _1_COLUMNS(a, ...) _APPLY(_COLUMN_ ## a, __VA_ARGS__)
+#define _2_COLUMNS(a, b, ...) _APPLY(_COLUMN_ ## a, __VA_ARGS__), _APPLY(_COLUMN_ ## b, __VA_ARGS__)
+#define _3_COLUMNS(a, b, c, ...) _APPLY(_COLUMN_ ## a, __VA_ARGS__), _2_COLUMNS(b, c, __VA_ARGS__)
+#define _4_COLUMNS(a, b, c, d, ...) _APPLY(_COLUMN_ ## a, __VA_ARGS__), _3_COLUMNS(b, c, d, __VA_ARGS__)
 
 #define _COLUMN_1(...) HEAD(__VA_ARGS__,)
 #define _COLUMN_2(x, ...) _COLUMN_1(__VA_ARGS__)
@@ -329,11 +330,34 @@
 #define _ROW_MATCH(key, _, key_col, val_col, ...) ((key) == (_1_COLUMNS(key_col, __VA_ARGS__))) ? (_1_COLUMNS(val_col, __VA_ARGS__)) :
 
 /*******************************************************************************
- * Defintion Helpers
+ * TABLE Helpers
  ******************************************************************************/
 
+/* Expand arguments through other macros
+ * 
+ * Note: To add support for expanding through new macros, define a new
+ * _EXPAND_ARG_MACRO_NAME helper that applies the corresponding macro.
+ */
+#define EXPAND_ARG(x) _EXPAND_ARG_ ## x
+#define _EXPAND_ARG_APPLY(...) APPLY(__VA_ARGS__)
+#define _EXPAND_ARG_BIMAP(...) BIMAP(__VA_ARGS__)
+#define _EXPAND_ARG_CASE(...) CASE(__VA_ARGS__)
+#define _EXPAND_ARG_CAT(...) CAT(__VA_ARGS__)
+#define _EXPAND_ARG_CAT3(...) CAT3(__VA_ARGS__)
+#define _EXPAND_ARG_COMPOSE(...) COMPOSE(__VA_ARGS__)
+#define _EXPAND_ARG_DROP(x) _EXPAND_ARG_DROP_ ## x
+#define _EXPAND_ARG_DROP_2(...) DROP(2)(__VA_ARGS__)
+#define _EXPAND_ARG_EQUAL_INTER(...) EQUAL_INTER(__VA_ARGS__)
+#define _EXPAND_ARG_HEAD(...) HEAD(__VA_ARGS__)
+#define _EXPAND_ARG_SECOND(...) SECOND(__VA_ARGS__)
+#define _EXPAND_ARG_SND(...) SND(__VA_ARGS__)
+#define _EXPAND_ARG_TAIL(...) TAIL(__VA_ARGS__)
+
 #define ENUMERATORS(name_column, value_column, table) \
-  table(COMMA_INTER, COMPOSE, EXPAND_ARG(EQUAL_INTER), APPLY, COLUMNS(table, name_column, value_column))
+  table(COMMA_INTER, COMPOSE, EXPAND_ARG(EQUAL_INTER), COLUMNS(table, name_column, value_column))
+
+#define SWITCH_CASES(table, key_col_name, val_col_name, map_key, map_val) \
+  table(SEMI_INTER, COMPOSE, EXPAND_ARG(CASE), COMPOSE_LC, CLOSE(BIMAP, map_key, map_val), COLUMNS(table, key_col_name, val_col_name))
 
 /*******************************************************************************
  * Pointer Type Helpers
@@ -374,23 +398,6 @@
  */
 #define ASSIGN_DEREF(x, ...) _ASSIGN_DEREF_##x
 #define _ASSIGN_DEREF_0(x, ...) *x = 0
-
-/*******************************************************************************
- * Structure Field Access
- ******************************************************************************/
-
-/* Structure field access helpers
- * 
- * Note: To add support for dereferencing from new structures, define a new
- * _DREF_FROM_structvar helper where structvar is the structure variable name.
- */
-#define DREF_FROM(x) _DREF_FROM_ ## x
-#define _DREF_FROM_f(x) f-> x
-#define _SECOND_DREF_FROM(f) _SECOND_DREF_FROM_ ## f
-#define _SECOND__DREF_FROM_f(...) \
-  EXPAND_ARG(HEAD)(__VA_ARGS__), \
-  _DREF_FROM_f(EXPAND_ARG(SND)(__VA_ARGS__)), \
-  EXPAND_ARG(DROP(2))(__VA_ARGS__)
 
 /*******************************************************************************
  * Equivalence Testing
