@@ -23,20 +23,21 @@
 
 /* Identity function - returns its argument unchanged
  */
-#define IDENTITY(x) x
+#define IDENTITY(...) __VA_ARGS__
 
 /* Apply function f to arguments
  */
-#define APPLY(x, ...) x(__VA_ARGS__)
+#define  APPLY(x, ...) x(__VA_ARGS__)
 #define _APPLY(x, ...) x(__VA_ARGS__)
 
-#define APPLY_ALT(x, ...) x(__VA_ARGS__)
+#define  APPLY_ALT(x, ...) x(__VA_ARGS__)
 #define _APPLY_ALT(x, ...) x(__VA_ARGS__)
 
 #define BIMAP(f, g, x, y) f(x), g(y)
 
 /* Function composition macros - chain function calls
  */
+#define COMPOSE(f, g, ...) f(g(__VA_ARGS__))
 #define COMPOSE(f, g, ...) f(g(__VA_ARGS__))
 #define COMPOSE3(f, g, h, ...) f(g(h(__VA_ARGS__)))
 #define COMPOSE4(f, g, h, i, ...) f(g(h(i(__VA_ARGS__))))
@@ -49,9 +50,14 @@
 
 #define CLOSE(f, ...) (f, __VA_ARGS__)
 
-#define APPLY_CLOSURE(closure, ...) APPLY(_APPLY, UNPACK closure, __VA_ARGS__)
+#define  APPLY_CLOSURE(closure, ...) _APPLY(_APPLY_ALT, UNPACK closure, __VA_ARGS__)
+#define _APPLY_CLOSURE(closure, ...) _APPLY(_APPLY_ALT, UNPACK closure, __VA_ARGS__)
 
-#define COMPOSE_LC(closure, f, ...) APPLY_CLOSURE(closure, f(__VA_ARGS__))
+#define  APPLY_CLOSURE_FLIPPED(closure, ...) 
+#define _FLIP_CLOSURE_ARGS(closure, ...) _AUPF_(CLOSE(__VA_ARGS__), UNPACK closure)
+#define _FLIP_CLOSURE_ARGS_(args, f, ...) _APPLY(_APPLY_ALT, f, unpack args, __VA_ARGS__)
+
+#define COMPOSE_LC(closure, f, ...) _APPLY_CLOSURE(closure, f(__VA_ARGS__))
 
 /*******************************************************************************
  * Tuple/Argument Manipulation Macros
@@ -151,8 +157,7 @@
  * where X is the name you want to support.
  */
 #define PREFIX(x) _PREFIX_##x
-#define _PREFIX_Log(x) _DEFER_STRING_CAT(Log, x)
-#define _DEFER_STRING_CAT(x, y) x ## y
+#define _PREFIX_COMMA(x) , x
 
 /* String copy with bounds checking
  * 
@@ -169,7 +174,7 @@
 /* Infix operator macros
  */
 #define INTER(x) x ## _INTER
-#define else_INTER(x, y, ...) x else y
+#define else_INTER(x, y) x else y
 
 #define COMMA_INTER(x, ...) x, __VA_ARGS__
 #define AND_INTER(x, y)   ((x) && (y))
@@ -191,8 +196,9 @@
  */
 #define RETURN(x) return (x)
 #define CASE_RETURN_STRINGIFIED(x) case (x): return STRINGIFY(x)
+#define CASE_PREFIXED_RETURN_STRINGIFIED(prefix, modifier, x) case NAME_CAT(prefix, x): return modifier(STRINGIFY(x))
 #define CASE(x, y) case (x): y
-#define CASE_RETURN(x, y, ...) case (x): return (y)
+#define CASE_RETURN(x, y) case (x): return (y)
 
 /* Maximum value macro
  */
@@ -254,6 +260,7 @@
  ******************************************************************************/
 
 #define MAP_REDUCE(reduce, map, constant, ...) APPLY(NAME_CAT(_MR, NARGS(__VA_ARGS__)), reduce, map, constant, __VA_ARGS__)
+#define _MR0(...)
 #define _MR1(  r, m, c, a)      m(c, a)
 #define _MR2(  r, m, c, a, ...) r(m(c, a),  _MR1(r, m, c, __VA_ARGS__))
 #define _MR3(  r, m, c, a, ...) r(m(c, a),  _MR2(r, m, c, __VA_ARGS__))
@@ -295,13 +302,14 @@
  *   #define COLUMN_<table-name>_<column-name>  <column-index>
  *
  * Single column:
- *   <table-name>(CONS, COLUMNS(<table-name>, <col1>))
+ *   <table-name>(CONS, APPLY, COLUMNS(<table-name>, <col1>))
  *
  * Multiple columns (requires COMPOSE and EXPAND_ARG to unpack):
- *   <table-name>(CONS, COMPOSE, EXPAND_ARG(COMBINER), COLUMNS(<table-name>, <col2>, <col1>))
+ *   <table-name>(CONS, COMPOSE, EXPAND_ARG(COMBINER), APPLY, COLUMNS(<table-name>, <col2>, <col1>))
  */
-#define COLUMNS(...) APPLY, _COLUMNS(__VA_ARGS__)
-#define _COLUMNS(table, ...) _N_COLUMNS(NARGS(__VA_ARGS__)), MAP_REDUCE(COMMA_INTER, NAME_CAT, COLUMN_ ## table ## _, __VA_ARGS__)
+#define COLUMNS(table, ...) \
+  _N_COLUMNS(NARGS(__VA_ARGS__)), \
+  MAP_REDUCE(COMMA_INTER, NAME_CAT, COLUMN_ ## table ## _, __VA_ARGS__)
 
 #define _N_COLUMNS(n) _N_COLUMNS_(n)
 #define _N_COLUMNS_(n) _ ## n ## _ ## COLUMNS
@@ -315,6 +323,9 @@
 #define _COLUMN_2(x, ...) _COLUMN_1(__VA_ARGS__)
 #define _COLUMN_3(x, ...) _COLUMN_2(__VA_ARGS__)
 #define _COLUMN_4(x, ...) _COLUMN_3(__VA_ARGS__)
+#define _COLUMN_5(x, ...) _COLUMN_4(__VA_ARGS__)
+#define _COLUMN_6(x, ...) _COLUMN_5(__VA_ARGS__)
+#define _COLUMN_7(x, ...) _COLUMN_6(__VA_ARGS__)
 
 /* TABLE_LOOKUP(table, key_col_name, key, result_col_name, default_val)
  *
@@ -323,11 +334,16 @@
  * column. Produces a nested ternary chain that the compiler
  * constant-folds when key is a compile-time constant.
  * Evaluates to default_val if no row has a key equal to key.
+ *
+ * Only calculates compile time values and cannot be used with
+ * runtime variables except default_val.
  */
 #define TABLE_LOOKUP(table, key_col_name, key, result_col_name, default_val) \
   table(CAT, _ROW_MATCH, key, COLUMNS(table, key_col_name, result_col_name)) (default_val)
 
 #define _ROW_MATCH(key, _, key_col, val_col, ...) ((key) == (_1_COLUMNS(key_col, __VA_ARGS__))) ? (_1_COLUMNS(val_col, __VA_ARGS__)) :
+
+#define COLUMN_MAX(table, column) table(MAX, APPLY, COLUMNS(table, column))
 
 /*******************************************************************************
  * TABLE Helpers
@@ -336,28 +352,31 @@
 /* Expand arguments through other macros
  * 
  * Note: To add support for expanding through new macros, define a new
- * _EXPAND_ARG_MACRO_NAME helper that applies the corresponding macro.
+ * EXPAND_ARG_MACRO_NAME helper that applies the corresponding macro.
  */
-#define EXPAND_ARG(x) _EXPAND_ARG_ ## x
-#define _EXPAND_ARG_APPLY(...) APPLY(__VA_ARGS__)
-#define _EXPAND_ARG_BIMAP(...) BIMAP(__VA_ARGS__)
-#define _EXPAND_ARG_CASE(...) CASE(__VA_ARGS__)
-#define _EXPAND_ARG_CAT(...) CAT(__VA_ARGS__)
-#define _EXPAND_ARG_CAT3(...) CAT3(__VA_ARGS__)
-#define _EXPAND_ARG_COMPOSE(...) COMPOSE(__VA_ARGS__)
-#define _EXPAND_ARG_DROP(x) _EXPAND_ARG_DROP_ ## x
-#define _EXPAND_ARG_DROP_2(...) DROP(2)(__VA_ARGS__)
-#define _EXPAND_ARG_EQUAL_INTER(...) EQUAL_INTER(__VA_ARGS__)
-#define _EXPAND_ARG_HEAD(...) HEAD(__VA_ARGS__)
-#define _EXPAND_ARG_SECOND(...) SECOND(__VA_ARGS__)
-#define _EXPAND_ARG_SND(...) SND(__VA_ARGS__)
-#define _EXPAND_ARG_TAIL(...) TAIL(__VA_ARGS__)
+#define EXPAND_ARG(x) EXPAND_ARG_ ## x
+#define EXPAND_ARG_APPLY(...) APPLY(__VA_ARGS__)
+#define EXPAND_ARG_BIMAP(...) BIMAP(__VA_ARGS__)
+#define EXPAND_ARG_CASE(...) CASE(__VA_ARGS__)
+#define EXPAND_ARG_CAT(...) CAT(__VA_ARGS__)
+#define EXPAND_ARG_CAT3(...) CAT3(__VA_ARGS__)
+#define EXPAND_ARG_COMPOSE(...) COMPOSE(__VA_ARGS__)
+#define EXPAND_ARG_DROP(x) EXPAND_ARG_DROP_ ## x
+#define EXPAND_ARG_DROP_2(...) DROP(2)(__VA_ARGS__)
+#define EXPAND_ARG_EQUAL_INTER(...) EQUAL_INTER(__VA_ARGS__)
+#define EXPAND_ARG_HEAD(...) HEAD(__VA_ARGS__)
+#define EXPAND_ARG_SECOND(...) SECOND(__VA_ARGS__)
+#define EXPAND_ARG_SND(...) SND(__VA_ARGS__)
+#define EXPAND_ARG_TAIL(...) TAIL(__VA_ARGS__)
 
-#define ENUMERATORS(name_column, value_column, table) \
-  table(COMMA_INTER, COMPOSE, EXPAND_ARG(EQUAL_INTER), COLUMNS(table, name_column, value_column))
+#define ENUMERATORS(table, name_prefix, name_column) \
+  table(COMMA_INTER, COMPOSE_LC, CLOSE(NAME_CAT, name_prefix), APPLY, COLUMNS(table, name_column))
 
-#define SWITCH_CASES(table, key_col_name, val_col_name, map_key, map_val) \
-  table(SEMI_INTER, COMPOSE, EXPAND_ARG(CASE), COMPOSE_LC, CLOSE(BIMAP, map_key, map_val), COLUMNS(table, key_col_name, val_col_name))
+#define ENUMERATORS_ASSIGNED(table, name_column, value_column) \
+  table(COMMA_INTER, COMPOSE, EXPAND_ARG(EQUAL_INTER), APPLY, COLUMNS(table, name_column, value_column))
+
+#define SWITCH_CASES(table, key_col_name, map_key, val_col_name, map_val) \
+  table(SEMI_INTER, COMPOSE, EXPAND_ARG(CASE), COMPOSE_LC, CLOSE(BIMAP, map_key, map_val), APPLY, COLUMNS(table, key_col_name, val_col_name))
 
 /*******************************************************************************
  * Pointer Type Helpers
@@ -369,6 +388,12 @@
 #define CP *const
 
 /*******************************************************************************
+ * Array Helpers
+ ******************************************************************************/
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
+/*******************************************************************************
  * Assignment Macros
  ******************************************************************************/
 
@@ -377,10 +402,10 @@
  * Note: To add new assignment types, define a new _ASSIGN_VALUE helper
  * where VALUE is the specific value or type to assign.
  */
-#define ASSIGN(x, ...) _ASSIGN_##x
-#define _ASSIGN_1(x, ...) x = 1
-#define _ASSIGN_NULL(x, ...) x = NULL
-#define _ASSIGN_INT_MIN(x, ...) x = INT_MIN
+#define ASSIGN(x) _ASSIGN_##x
+#define _ASSIGN_1(x) x = 1
+#define _ASSIGN_NULL(x) x = NULL
+#define _ASSIGN_INT_MIN(x) x = INT_MIN
 #define _ASSIGN_EMPTY(...)
 
 /* Negated value assignment macros
@@ -388,16 +413,16 @@
  * Note: To add new negated assignments, define a new _ASSIGN_NEG_VALUE helper
  * where VALUE is the specific value to negate and assign.
  */
-#define ASSIGN_NEG(x, ...) _ASSIGN_NEG_ ## x
-#define _ASSIGN_NEG_1(x, ...) x = -1
+#define ASSIGN_NEG(x) _ASSIGN_NEG_ ## x
+#define _ASSIGN_NEG_1(x) x = -1
 
 /* Pointer dereferencing assignment
  * 
  * Note: To add new dereferencing assignments, define a new _ASSIGN_DEREF_VALUE helper
  * where VALUE is the specific value to assign through the pointer.
  */
-#define ASSIGN_DEREF(x, ...) _ASSIGN_DEREF_##x
-#define _ASSIGN_DEREF_0(x, ...) *x = 0
+#define ASSIGN_DEREF(x) _ASSIGN_DEREF_##x
+#define _ASSIGN_DEREF_0(x) *x = 0
 
 /*******************************************************************************
  * Equivalence Testing
@@ -409,8 +434,8 @@
  * _EQUIVALENT_VALUE helper where VALUE is the specific value to compare against.
  */
 #define EQUIVALENT(x) _EQUIVALENT_ ## x
-#define _EQUIVALENT_NULL(x, ...) NULL == (x)
-#define _EQUIVALENT_INT_MIN(x, ...) INT_MIN == (x)
+#define _EQUIVALENT_NULL(x) NULL == (x)
+#define _EQUIVALENT_INT_MIN(x) INT_MIN == (x)
 #define _EQUIVALENT_EMPTY(...) NULL == NULL
 
 /* Pointer dereferencing comparison
